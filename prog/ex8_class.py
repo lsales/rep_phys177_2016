@@ -3,6 +3,11 @@ import matplotlib.pyplot as plt
 import pdb
 
 #Define constants...
+G = 6.6738e-11 # m**3 kg**-1 s**-2         Gravitational Constant
+M = 1.9891e30 # kg      Mass of the Sun
+delta = 3.16887e-5 #m per year # convert to seconds   given 1km/year need to convert to m/sec   1 year = 31556926 seconds
+
+
 
 def f(r):
 	x = r[0]
@@ -14,27 +19,29 @@ def f(r):
 	vx = - G * M * r[0] / rdis**3 
 	y = vy
 	vy = - G * M * r[2] / rdis**3
-	r[:] = np.array([x,vx,y,vy])
-	return r   #check this
+	return np.array([x,vx,y,vy],float)
 
 
 tini = 0.
-tend = 1000000.
-N = 200000
-h = 1000.
+#tend = 1000000.
+tend = 3.1e9 #final time
+N = 20000
+h = 2000000
 
 xpoint = np.zeros(N)
 ypoint = np.zeros(N)
+tpoint = np.zeros(N)
 h_step = np.zeros(N)
 
 r = np.array([4.e12,0.,0.,500.])
 
 t = 0.
+nstep = 0L
 while t < tend:
 
-	r1 = r.copy()
-
+	redo = 1
 	while (redo == 1):
+		r1 = r.copy()
 		for i in range(2):
 			# use 4th-RK
 			k1 = h * f(r1)
@@ -51,14 +58,60 @@ while t < tend:
 		k4 = 2.*h * f(r2 + k3)
 		r2 += 1./6. * (k1 + 2.*k2 + 2.*k3 + k4) 
 
-		rho = 30. * h * delta / (np.sqrt((r1[0]-r2[0])**2) + (r1[2]-r2[2])**2))
+		var = np.sqrt((r1[0]-r2[0])**2 + (r1[2]-r2[2])**2)
+		if var > 0: 
+			rho = 30. * h * delta / var
+		else:
+			rho = 10.
 
 		if rho >= 1.:
-			r[index??] = r1
+			r = r1
 			redo = 0
-			t += 2h 
+			t += 2.*h 
 		else:
 			redo = 1
 
-		hnew = h * rho** 0.25
+		hold = h
+		h = hold * rho** 0.25
+		if h > 2.*hold: h = 2.*hold
+
+	xpoint[nstep] = r1[0]
+	ypoint[nstep] = r1[2]
+	tpoint[nstep] = t
+	h_step[nstep] = hold
+
+	nstep += 1
+	print 'nstep=, h=', (h,nstep)
+
+# re-shape arrays with needed number of elements
+tpoint = tpoint[0:nstep]
+xpoint = xpoint[0:nstep]
+ypoint = ypoint[0:nstep]
+h_step = h_step[0:nstep]
+
+
+#plt.figure(1)
+#plt.plot(xpoint, ypoint)
+#pdb.set_trace()
+
+### 
+# plot orbit as a function of time
+dist = np.sqrt(xpoint**2 + ypoint**2)
+plt.subplot(2,1,1)
+plt.plot(tpoint,dist,'--',linewidth=2)
+plt.title("Orbit as a Function of Time - Two Orbits")
+plt.xlabel('Time [sec]')
+plt.ylabel('Distance [m]')
+
+# plot step size
+plt.subplot(2,1,2)
+ax1 = plt.subplot(2,1,2)
+plt.plot(tpoint,h_step,'-',linewidth=2)
+ax1.set_yscale('log')
+plt.title("Step size vs Time - Two Orbits")
+plt.xlabel("Time [sec]")
+plt.ylabel("Log of Step Size")
+
+
+pdb.set_trace()
 		
